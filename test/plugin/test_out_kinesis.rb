@@ -41,7 +41,7 @@ class KinesisOutputTest < Test::Unit::TestCase
     # d.run
   end
 
-  def test_write
+  def test_emit
     d = create_driver
 
     # time = Time.parse("2011-01-02 13:14:15 UTC").to_i
