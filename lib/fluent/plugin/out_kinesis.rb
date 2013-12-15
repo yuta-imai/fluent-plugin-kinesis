@@ -11,10 +11,12 @@ module Fluent
         def configure(conf)
             super
             @stream = conf['stream']
+            @api_version = conf['api_version'] || '20131202'
+            @x_amz_target = 'Kinesis_' + @api_version + '.PutRecord'
             @aws_access_key_id = conf['aws_access_key_id']
             @aws_secret_access_key = conf['aws_secret_access_key']
             @region = conf['region']
-            @host = conf['api_host']
+            @host = ["kinesis",conf['region'],"amazonaws.com"].join(".")
             @partition_key   = conf["partition_key"]
             @sequence_number = conf["sequence_number"] || nil
         end
@@ -55,7 +57,7 @@ module Fluent
             request.http_method = 'POST'
             request.host = @host
             request.body = build_body(record)
-            request.headers["X-Amz-Target"] = 'Kinesis_20131104.PutRecord'
+            request.headers["X-Amz-Target"] = @x_amz_target
             request.headers['x-amz-content-sha256'] ||= hexdigest(request.body || '')
             request.use_ssl = true
 
@@ -63,7 +65,8 @@ module Fluent
             request.headers['content-type'] ||= 'application/x-amz-json-1.1'
             request.headers['host'] = request.host
             request.headers['x-amz-date'] = datetime
-            request.headers['User-Agent'] = "fluent-plugin-kinesis"
+            request.headers['User-Agent'] = 'fluent-plugin-kinesis'
+            request.headers['Connection'] = 'Keep-Alive'
                 
             parts = []
             parts << "AWS4-HMAC-SHA256 Credential=#{@credentials.access_key_id}/#{credential_string(datetime)}"
@@ -80,18 +83,21 @@ module Fluent
                 :PartitionKey => record[@partition_key],
                 :Data         => Base64.encode64(JSON.dump(record)).strip!.gsub("\n","")
             }
+            if @sequence_number
+                data[:SequenceNumberForOrdering] = record[@sequence_number]
+            end
             JSON.dump(data)
         end
 
         def hexdigest value
             digest = Digest::SHA256.new
             if value.respond_to?(:read)
-            chunk = nil
-            chunk_size = 1024 * 1024 # 1 megabyte
-            digest.update(chunk) while chunk = value.read(chunk_size)
-            value.rewind
+                chunk = nil
+                chunk_size = 1024 * 1024 # 1 megabyte
+                digest.update(chunk) while chunk = value.read(chunk_size)
+                value.rewind
             else
-            digest.update(value)
+                digest.update(value)
             end
             digest.hexdigest
         end
