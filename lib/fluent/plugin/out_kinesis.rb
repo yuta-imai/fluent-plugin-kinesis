@@ -35,39 +35,43 @@ module Fluent
             super
         end
 
-        def format(tag,time,record)
-            [tag,time,record].to_msgpack
-        end
-
         def emit(tag,es,chain)
             chain.next
             es.each{|time,record|
-                request = AWS::Core::Http::Request.new()
-                request.http_method = 'POST'
-                request.host = @host
-                request.body = build_body(record)
-                request.headers["X-Amz-Target"] = 'Kinesis_20131104.PutRecord'
-                request.headers['x-amz-content-sha256'] ||= hexdigest(request.body || '')
-                request.use_ssl = true
-                response = AWS::Core::Http::Response.new()
-
-                datetime = Time.now.utc.strftime("%Y%m%dT%H%M%SZ")
-                request.headers['content-type'] ||= 'application/x-amz-json-1.1'
-                request.headers['host'] = request.host
-                request.headers['x-amz-date'] = datetime
-                request.headers['User-Agent'] = "fluent-plugin-kinesis"
-                    
-                parts = []
-                parts << "AWS4-HMAC-SHA256 Credential=#{@credentials.access_key_id}/#{credential_string(datetime)}"
-                parts << "SignedHeaders=#{signed_headers(request.headers)}"
-                parts << "Signature=#{signature(@credentials, datetime, request)}"
-
-                request.headers['authorization'] = parts.join(', ')
-                @handler.handle(request,response)
-
-                p response.body
-
+                request = build_request(record)
+                exec_request(request)
             }
+        end
+
+        private
+        def exec_request request
+            response = AWS::Core::Http::Response.new()
+            @handler.handle(request,response)
+            p response.body
+        end
+
+        def build_request record
+            request = AWS::Core::Http::Request.new()
+            request.http_method = 'POST'
+            request.host = @host
+            request.body = build_body(record)
+            request.headers["X-Amz-Target"] = 'Kinesis_20131104.PutRecord'
+            request.headers['x-amz-content-sha256'] ||= hexdigest(request.body || '')
+            request.use_ssl = true
+
+            datetime = Time.now.utc.strftime("%Y%m%dT%H%M%SZ")
+            request.headers['content-type'] ||= 'application/x-amz-json-1.1'
+            request.headers['host'] = request.host
+            request.headers['x-amz-date'] = datetime
+            request.headers['User-Agent'] = "fluent-plugin-kinesis"
+                
+            parts = []
+            parts << "AWS4-HMAC-SHA256 Credential=#{@credentials.access_key_id}/#{credential_string(datetime)}"
+            parts << "SignedHeaders=#{signed_headers(request.headers)}"
+            parts << "Signature=#{signature(@credentials, datetime, request)}"
+
+            request.headers['authorization'] = parts.join(', ')
+            request
         end
 
         def build_body record
