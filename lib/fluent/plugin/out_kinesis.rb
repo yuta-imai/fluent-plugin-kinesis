@@ -74,7 +74,7 @@ module Fluent
             data = {
                 :StreamName   => @stream,
                 :PartitionKey => record[@partition_key],
-                :Data         => Base64.encode64(JSON.dump(record)).strip!
+                :Data         => Base64.encode64(JSON.dump(record)).strip!.gsub("\n","")
             }
             JSON.dump(data)
         end
