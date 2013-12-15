@@ -1,6 +1,9 @@
 # Fluent::Plugin::Kinesis
 
-TODO: Write a gem description
+## Overview
+
+Output plugin for Amazon Kinesis.
+Currently, this plugin is based on 'Fluent::Buffer', so it emits data to Kinesis at each input.
 
 ## Installation
 
@@ -8,17 +11,25 @@ Add this line to your application's Gemfile:
 
     gem 'fluent-plugin-kinesis'
 
-And then execute:
+## Configuration
+```ruby
+    type kinesis
+    stream YOUR_STREAM_NAME
+    aws_access_key_id YOUR_AWS_ACCESS_KEY
+    aws_secret_access_key YOUR_SECRET_KEY
+    region us-east-1
+    partition_key PARTITION_KEY
+    sequence_number SEQUENCE_NUMBER
+```
+[stream_name] Name of the stream to put data.
 
-    $ bundle
+[aws_key_id] AWS access key id. This parameter is required when your agent is not running on EC2 instance with an IAM Instance Profile.
 
-Or install it yourself as:
+[aws_sec_key] AWS secret key. This parameter is required when your agent is not running on EC2 instance with an IAM Instance Profile.
 
-    $ gem install fluent-plugin-kinesis
+[region] AWS region of your stream. It should be in form like these "us-east-1", "us-west-1".
 
-## Usage
-
-TODO: Write usage instructions here
+[partition_key] The key to designate for partition key in Amazon Kinesis.
 
 ## Contributing
 
