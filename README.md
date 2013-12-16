@@ -3,13 +3,8 @@
 ## Overview
 
 Output plugin for Amazon Kinesis.
-Currently, this plugin is based on 'Fluent::Buffer', so it emits data to Kinesis at each input.
-
-## Installation
-
-Add this line to your application's Gemfile:
-
-    gem 'fluent-plugin-kinesis'
+Currently, this plugin is based on 'Fluent::Output', so it emits data to Kinesis at each input.
+In the near future, it will be based on Timeslied 'Fluent::TimeSlicedOutput' to increase throghput.
 
 ## Configuration
 ```ruby
