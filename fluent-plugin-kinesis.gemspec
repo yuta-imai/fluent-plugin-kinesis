@@ -7,9 +7,9 @@ Gem::Specification.new do |spec|
   spec.version       = '0.0.1'
   spec.authors       = ["Yuta Imai"]
   spec.email         = ["'imai.factory@gmail.com'"]
-  spec.description   = %q{TODO: Write a gem description}
-  spec.summary       = %q{TODO: Write a gem summary}
-  spec.homepage      = ""
+  spec.description   = %q{Fluent plugin for kinesis. This plugin put record to Amazon Kinesis.}
+  spec.summary       = %q{Fluent plugin for kinesis.}
+  spec.homepage      = "https://github.com/imaifactory/fluent-plugin-kinesis"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
