@@ -38,11 +38,11 @@ module Fluent
         end
 
         def emit(tag,es,chain)
-            chain.next
             es.each{|time,record|
                 request = build_request(record)
-                exec_request(request)
+                p exec_request(request)
             }
+            chain.next
         end
 
         private
