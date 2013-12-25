@@ -7,14 +7,33 @@ Currently, this plugin is based on 'Fluent::Output', so it emits data to Kinesis
 In the near future, it will be based on Timeslied 'Fluent::TimeSlicedOutput' to increase throghput.
 
 ## Configuration
-```ruby
+```
     type kinesis
-    stream YOUR_STREAM_NAME
-    aws_access_key_id YOUR_AWS_ACCESS_KEY
-    aws_secret_access_key YOUR_SECRET_KEY
+
+    stream_name YOUR_STREAM_NAME
+
+    aws_key_id YOUR_AWS_ACCESS_KEY
+    aws_sec_key YOUR_SECRET_KEY
     region us-east-1
+
     partition_key PARTITION_KEY
-    sequence_number SEQUENCE_NUMBER
+
+    # partition_key is JSON Object Hash Key for PartitionKey
+    # e.g.)
+    #   JSON Object: {'foo': 100, 'bar': 200}
+    #   fluentd conf: partition_key=foo
+    #   -> PutRecord Action: PartitionKey=100
+
+    #partition_key_proc proc {|record| record['foo'] }
+
+    #explicit_hash_key ...
+    #explicit_hash_key_proc ...
+
+    #debug false
+    #include_tag true
+    #include_time true
+
+    #sequence_number_for_ordering SEQUENCE_NUMBER
 ```
 [stream_name] Name of the stream to put data.
 

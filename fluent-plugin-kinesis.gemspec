@@ -21,5 +21,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake"
 
   spec.add_dependency "fluentd"
-  spec.add_dependency "aws-sdk"
+  # Kinesis client is not work in "< 1.31.3"
+  spec.add_dependency "aws-sdk", ">= 1.31.3"
+  spec.add_dependency "json"
 end
