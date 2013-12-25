@@ -3,8 +3,6 @@
 ## Overview
 
 Output plugin for Amazon Kinesis.
-Currently, this plugin is based on 'Fluent::Output', so it emits data to Kinesis at each input.
-In the near future, it will be based on Timeslied 'Fluent::TimeSlicedOutput' to increase throghput.
 
 ## Configuration
 ```
