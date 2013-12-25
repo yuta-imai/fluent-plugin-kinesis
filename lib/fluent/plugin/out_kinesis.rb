@@ -1,171 +1,151 @@
 module Fluent
-    class KinesisOutput < Fluent::Output
+    class KinesisOutput < Fluent::BufferedOutput
         Fluent::Plugin.register_output('kinesis',self)
 
         def initialize
             super
-            require "base64"
             require 'aws-sdk'
+            require 'base64'
+            require 'json'
+            require 'logger'
         end
+
+        config_param :aws_key_id,   :string, :default => nil
+        config_param :aws_sec_key,  :string, :default => nil
+        config_param :region,       :string, :default => nil
+
+        config_param :stream_name,            :string, :default => nil
+        config_param :partition_key,          :string, :default => nil
+        config_param :partition_key_proc,     :string, :default => nil
+        config_param :explicit_hash_key,      :string, :default => nil
+        config_param :explicit_hash_key_proc, :string, :default => nil
+
+        config_param :sequence_number_for_ordering, :string, :default => nil
+
+        config_param :include_tag,  :bool, :default => true
+        config_param :include_time, :bool, :default => true
+        config_param :debug,        :bool, :default => false
 
         def configure(conf)
             super
-            @stream = conf['stream']
-            @api_version = conf['api_version'] || '20131202'
-            @x_amz_target = 'Kinesis_' + @api_version + '.PutRecord'
-            @aws_access_key_id = conf['aws_access_key_id']
-            @aws_secret_access_key = conf['aws_secret_access_key']
-            @region = conf['region']
-            @host = ["kinesis",conf['region'],"amazonaws.com"].join(".")
-            @partition_key   = conf["partition_key"]
-            @sequence_number = conf["sequence_number"] || nil
+
+            [:aws_key_id, :aws_sec_key, :region, :stream_name].each do |name|
+                unless self.instance_variable_get("@#{name}")
+                    raise ConfigError, "'#{name}' is required"
+                end
+            end
+
+            unless @partition_key or @partition_key_proc
+                raise ConfigError, "'partition_key' or 'partition_key_proc' is required"
+            end
+
+            if @partition_key_proc
+                @partition_key_proc = eval(@partition_key_proc)
+            end
+
+            if @explicit_hash_key_proc
+                @explicit_hash_key_proc = eval(@explicit_hash_key_proc)
+            end
         end
 
         def start
             super
-            AWS.config(
-                :access_key_id =>  @aws_access_key_id ,
-                :secret_access_key => @aws_secret_access_key,
-                :region => @region
-            )
-            config = AWS.config
-            @credentials = config.credential_provider
-            @handler = AWS::Core::Http::NetHttpHandler.new()
+            configure_aws
+            @client = AWS.kinesis.client
+            @client.describe_stream(:stream_name => @stream_name)
         end
 
         def shutdown
             super
         end
 
-        def emit(tag,es,chain)
-            es.each{|time,record|
-                request = build_request(record)
-                p exec_request(request)
+        def format(tag, time, record)
+            record['__tag'] = tag if @include_tag
+            record['__time'] = time if @include_time
+
+            # XXX: The maximum size of the data blob is 50 kilobytes
+            # http://docs.aws.amazon.com/kinesis/latest/APIReference/API_PutRecord.html
+            data = {
+                :stream_name => @stream_name,
+                :data => encode64(record.to_json),
+                :partition_key => get_key(:partition_key,record)
             }
-            chain.next
+
+            if @explicit_hash_key or @explicit_hash_key_proc
+                data[:explicit_hash_key] = get_key(:explicit_hash_key,record)
+            end
+
+            if @sequence_number_for_ordering
+                data[:sequence_number_for_ordering] = @sequence_number_for_ordering
+            end
+
+            pack_data(data)
+        end
+
+        def write(chunk)
+            buf = chunk.read
+
+            while (data = unpack_data(buf))
+                AWS.kinesis.client.put_record(data)
+            end
         end
 
         private
-        def exec_request request
-            response = AWS::Core::Http::Response.new()
-            @handler.handle(request,response)
-            p response.body
-        end
-
-        def build_request record
-            request = AWS::Core::Http::Request.new()
-            request.http_method = 'POST'
-            request.host = @host
-            request.body = build_body(record)
-            request.headers["X-Amz-Target"] = @x_amz_target
-            request.headers['x-amz-content-sha256'] ||= hexdigest(request.body || '')
-            request.use_ssl = true
-
-            datetime = Time.now.utc.strftime("%Y%m%dT%H%M%SZ")
-            request.headers['content-type'] ||= 'application/x-amz-json-1.1'
-            request.headers['host'] = request.host
-            request.headers['x-amz-date'] = datetime
-            request.headers['User-Agent'] = 'fluent-plugin-kinesis'
-            request.headers['Connection'] = 'Keep-Alive'
-                
-            parts = []
-            parts << "AWS4-HMAC-SHA256 Credential=#{@credentials.access_key_id}/#{credential_string(datetime)}"
-            parts << "SignedHeaders=#{signed_headers(request.headers)}"
-            parts << "Signature=#{signature(@credentials, datetime, request)}"
-
-            request.headers['authorization'] = parts.join(', ')
-            request
-        end
-
-        def build_body record
-            data = {
-                :StreamName   => @stream,
-                :PartitionKey => record[@partition_key],
-                :Data         => Base64.encode64(JSON.dump(record)).strip!.gsub("\n","")
+        def configure_aws
+            options = {
+                :access_key_id => @aws_key_id,
+                :secret_access_key => @aws_sec_key,
+                :region => @region
             }
-            if @sequence_number
-                data[:SequenceNumberForOrdering] = record[@sequence_number]
+
+            if @debug
+                options.update(
+                    :logger => Logger.new($log.out),
+                    :log_level => :debug
+                )
+                # XXX: Add the following options, if necessary
+                # :http_wire_trace => true
             end
-            JSON.dump(data)
+
+            AWS.config(options)
         end
 
-        def hexdigest value
-            digest = Digest::SHA256.new
-            if value.respond_to?(:read)
-                chunk = nil
-                chunk_size = 1024 * 1024 # 1 megabyte
-                digest.update(chunk) while chunk = value.read(chunk_size)
-                value.rewind
-            else
-                digest.update(value)
+        def get_key(name, record)
+            key = self.instance_variable_get("@#{name}")
+            key_proc = self.instance_variable_get("@#{name}_proc")
+
+            value = key ? record[key] : record
+
+            if key_proc
+                value = key_proc.arity.zero? ? key_proc.call : key_proc.call(value)
             end
-            digest.hexdigest
+
+            value.to_s
         end
 
-        def credential_string datetime
-            parts = []
-            parts << datetime[0,8]
-            parts << "us-east-1"
-            parts << "kinesis"
-            parts << 'aws4_request'
-            parts.join("/")
+        def pack_data(data)
+            data = data.to_msgpack(data)
+            force_encoding(data,'ascii-8bit')
+            [data.length].pack('L') + data
         end
 
-        def signed_headers headers
-            to_sign = headers.keys.map{|k| k.to_s.downcase }
-            to_sign.delete('authorization')
-            to_sign.sort.join(";")
+        def unpack_data(buf)
+            return nil if buf.empty?
+
+            force_encoding(buf,'ascii-8bit')
+            length = buf.slice!(0,4).unpack('L').first
+            data = buf.slice!(0,length)
+            MessagePack.unpack(data)
         end
 
-        def canonical_headers original_headers
-            headers = []
-            original_headers.each_pair do |k,v|
-                headers << [k,v] unless k == 'authorization'
+        def encode64(str)
+            Base64.encode64(str).delete("\n")
+        end
+
+        def force_encoding(str, encoding)
+            if str.respond_to?(:force_encoding)
+                str.force_encoding(encoding)
             end
-            headers = headers.sort_by(&:first)
-            headers.map{|k,v| "#{k}:#{canonical_header_values(v)}" }.join("\n")
-        end
-
-        def signature credentials, datetime, request
-            k_secret = credentials.secret_access_key
-            k_date = hmac("AWS4" + k_secret, datetime[0,8])
-            k_region = hmac(k_date, "us-east-1")
-            k_service = hmac(k_region, "kinesis")
-            k_credentials = hmac(k_service, 'aws4_request')
-            hexhmac(k_credentials, string_to_sign(datetime, request))
-        end
-
-        def hmac key, value
-            OpenSSL::HMAC.digest(OpenSSL::Digest::Digest.new('sha256'), key, value)
-        end
-
-        def hexhmac key, value
-            OpenSSL::HMAC.hexdigest(OpenSSL::Digest::Digest.new('sha256'), key, value)
-        end
-
-        def string_to_sign datetime, request
-            parts = []
-            parts << 'AWS4-HMAC-SHA256'
-            parts << datetime
-            parts << credential_string(datetime)
-            parts << hexdigest(canonical_request(request))
-            parts.join("\n")
-        end
-
-        def canonical_request request
-            parts = []
-            parts << request.http_method
-            parts << request.path
-            parts << request.querystring
-            parts << canonical_headers(request.headers) + "\n"
-            parts << signed_headers(request.headers)
-            parts << request.headers['x-amz-content-sha256']
-            parts.join("\n")
-        end
-
-        def canonical_header_values values
-            values = [values] unless values.is_a?(Array)
-            values.map(&:to_s).join(',').gsub(/\s+/, ' ').strip
         end
     end
 end
