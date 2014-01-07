@@ -41,8 +41,8 @@ class KinesisOutputTest < Test::Unit::TestCase
     d.emit({"test_partition_key"=>"key1","a"=>1}, time)
     d.emit({"test_partition_key"=>"key2","a"=>2}, time)
 
-    d.expect_format %!\x94\x00\x00\x00\x83\xABstream_name\xABtest_stream\xA4data\xDA\x00`eyJ0ZXN0X3BhcnRpdGlvbl9rZXkiOiJrZXkxIiwiYSI6MSwiX190YWciOiJ0ZXN0IiwiX190aW1lIjoxMjkzOTc0MDU1fQ==\xADpartition_key\xA4key1!.b
-    d.expect_format %!\x94\x00\x00\x00\x83\xABstream_name\xABtest_stream\xA4data\xDA\x00`eyJ0ZXN0X3BhcnRpdGlvbl9rZXkiOiJrZXkyIiwiYSI6MiwiX190YWciOiJ0ZXN0IiwiX190aW1lIjoxMjkzOTc0MDU1fQ==\xADpartition_key\xA4key2!.b
+    d.expect_format %!\x94\x00\x00\x00\x83\xABstream_name\xABtest_stream\xA4data\xDA\x00`eyJ0ZXN0X3BhcnRpdGlvbl9rZXkiOiJrZXkxIiwiYSI6MSwiX190YWciOiJ0ZXN0IiwiX190aW1lIjoxMjkzOTc0MDU1fQ==\xADpartition_key\xA4key1!.force_encoding('ascii-8bit')
+    d.expect_format %!\x94\x00\x00\x00\x83\xABstream_name\xABtest_stream\xA4data\xDA\x00`eyJ0ZXN0X3BhcnRpdGlvbl9rZXkiOiJrZXkyIiwiYSI6MiwiX190YWciOiJ0ZXN0IiwiX190aW1lIjoxMjkzOTc0MDU1fQ==\xADpartition_key\xA4key2!.force_encoding('ascii-8bit')
 
     d.run
   end
@@ -56,8 +56,8 @@ class KinesisOutputTest < Test::Unit::TestCase
     d.emit({"test_partition_key"=>"key1","seq_num"=>100,"a"=>1}, time)
     d.emit({"test_partition_key"=>"key2","seq_num"=>100,"a"=>2}, time)
 
-    d.expect_format %!\xC9\x00\x00\x00\x84\xABstream_name\xABtest_stream\xA4data\xDA\x00peyJ0ZXN0X3BhcnRpdGlvbl9rZXkiOiJrZXkxIiwic2VxX251bSI6MTAwLCJhIjoxLCJfX3RhZyI6InRlc3QiLCJfX3RpbWUiOjEyOTM5NzQwNTV9\xADpartition_key\xA4key1\xBCsequence_number_for_ordering\xA7seq_num!.b
-    d.expect_format %!\xC9\x00\x00\x00\x84\xABstream_name\xABtest_stream\xA4data\xDA\x00peyJ0ZXN0X3BhcnRpdGlvbl9rZXkiOiJrZXkyIiwic2VxX251bSI6MTAwLCJhIjoyLCJfX3RhZyI6InRlc3QiLCJfX3RpbWUiOjEyOTM5NzQwNTV9\xADpartition_key\xA4key2\xBCsequence_number_for_ordering\xA7seq_num!.b
+    d.expect_format %!\xC9\x00\x00\x00\x84\xABstream_name\xABtest_stream\xA4data\xDA\x00peyJ0ZXN0X3BhcnRpdGlvbl9rZXkiOiJrZXkxIiwic2VxX251bSI6MTAwLCJhIjoxLCJfX3RhZyI6InRlc3QiLCJfX3RpbWUiOjEyOTM5NzQwNTV9\xADpartition_key\xA4key1\xBCsequence_number_for_ordering\xA7seq_num!.force_encoding('ascii-8bit')
+    d.expect_format %!\xC9\x00\x00\x00\x84\xABstream_name\xABtest_stream\xA4data\xDA\x00peyJ0ZXN0X3BhcnRpdGlvbl9rZXkiOiJrZXkyIiwic2VxX251bSI6MTAwLCJhIjoyLCJfX3RhZyI6InRlc3QiLCJfX3RpbWUiOjEyOTM5NzQwNTV9\xADpartition_key\xA4key2\xBCsequence_number_for_ordering\xA7seq_num!.force_encoding('ascii-8bit')
 
     d.run
   end
