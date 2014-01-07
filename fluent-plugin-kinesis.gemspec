@@ -24,4 +24,5 @@ Gem::Specification.new do |spec|
   # Kinesis client is not work in "< 1.31.3"
   spec.add_dependency "aws-sdk", ">= 1.31.3"
   spec.add_dependency "json"
+  spec.add_dependency "msgpack", ">= 0.5.8"
 end
