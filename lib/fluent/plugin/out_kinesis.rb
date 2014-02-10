@@ -86,7 +86,7 @@ module Fluent
         def write(chunk)
             chunk.msgpack_each do |data|
                 while (data = unpack_data(buf))
-                    AWS.kinesis.client.put_record(data)
+                    @client.put_record(data)
                 end
             end
         end
