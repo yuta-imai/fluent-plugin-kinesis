@@ -28,8 +28,6 @@ Output plugin for Amazon Kinesis.
     #explicit_hash_key_proc ...
 
     #debug false
-    #include_tag true
-    #include_time true
 
     #sequence_number_for_ordering SEQUENCE_NUMBER
 ```
@@ -52,7 +50,7 @@ cd fluent-plugin-kinesis
 rake build
 (gem|fluent-gem) install pkg/fluent-plugin-kinesis-0.0.1.gem
 ```
- 
+
 
 ## Contributing
 
