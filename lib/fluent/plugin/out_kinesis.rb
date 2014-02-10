@@ -85,9 +85,7 @@ module Fluent
 
         def write(chunk)
             chunk.msgpack_each do |data|
-                while (data = unpack_data(buf))
-                    @client.put_record(data)
-                end
+                @client.put_record(data)
             end
         end
 
