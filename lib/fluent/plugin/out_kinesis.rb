@@ -79,14 +79,14 @@ module Fluent
                 data[:sequence_number_for_ordering] = @sequence_number_for_ordering
             end
 
-            pack_data(data)
+            data.to_msgpack
         end
 
         def write(chunk)
-            buf = chunk.read
-
-            while (data = unpack_data(buf))
-                AWS.kinesis.client.put_record(data)
+            chunk.msgpack_each do |data|
+                while (data = unpack_data(buf))
+                    AWS.kinesis.client.put_record(data)
+                end
             end
         end
 
@@ -123,29 +123,8 @@ module Fluent
             value.to_s
         end
 
-        def pack_data(data)
-            data = data.to_msgpack(data)
-            force_encoding(data,'ascii-8bit')
-            [data.length].pack('L') + data
-        end
-
-        def unpack_data(buf)
-            return nil if buf.empty?
-
-            force_encoding(buf,'ascii-8bit')
-            length = buf.slice!(0,4).unpack('L').first
-            data = buf.slice!(0,length)
-            MessagePack.unpack(data)
-        end
-
         def encode64(str)
             Base64.encode64(str).delete("\n")
-        end
-
-        def force_encoding(str, encoding)
-            if str.respond_to?(:force_encoding)
-                str.force_encoding(encoding)
-            end
         end
     end
 end
