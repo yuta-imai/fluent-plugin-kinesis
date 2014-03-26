@@ -44,7 +44,7 @@ Output plugin for Amazon Kinesis.
 [partition_key] The key to designate for partition key in Amazon Kinesis.
 
 ## Install
-Install via gem/fluent-gem. Currently this code is not published in rugygems.org not yet, so you have to build by yourself.
+Install via gem/fluent-gem. Currently this code is not published in rugygems.org yet, so you have to build by yourself.
 Please be patient.
 ```
 git clone https://github.com/imaifactory/fluent-plugin-kinesis.git
